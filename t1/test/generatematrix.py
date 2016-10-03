@@ -1,7 +1,7 @@
-col = 1000
-lin = 1000
+col = 10
+lin = 10
 import random
-f = open("m2.txt",'w')
+f = open("m1.txt",'w')
 f.write("LINHAS = ")
 f.write(str(lin))
 f.write("\nCOLUNAS = ")

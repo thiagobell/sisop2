@@ -8,6 +8,19 @@ void formatingError(char *comment)
   printf("input file formating error %s\n", comment);
   exit(-1);
 }
+
+MATRIX createMatrix( int nline, int ncol)
+{
+  MATRIX result;
+  result.ncol = ncol;
+  result.nline = nline;
+  result.data = (int**) calloc(nline, sizeof(int*));
+  for(int i= 0; i< nline; i++)
+    result.data[i] = (int*) calloc(ncol, sizeof(int));
+  //int (*matrix)[result.ncol] = (int(*)[result.ncol]) malloc(sizeof(int)*result.nline*result.ncol);
+  return result;
+}
+
 MATRIX parseMatrix(char *filename)
 {
   FILE *f = fopen(filename,"r");
@@ -32,10 +45,8 @@ MATRIX parseMatrix(char *filename)
       }
     }
   }
-  MATRIX matrix;
-  matrix.data = (int**) calloc(nlines, sizeof(int*));
+  MATRIX matrix = createMatrix(nlines,ncol);
   for(int i= 0; i< nlines; i++) {
-    matrix.data[i] = (int*) calloc(ncol, sizeof(int));
     for(int col= 0; col < ncol; col++) {
       if(fscanf(f," %d ", &matrix.data[i][col])<=0)
         formatingError("matrix syntax error");

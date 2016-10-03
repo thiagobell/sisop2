@@ -12,5 +12,5 @@ typedef struct {
 
 MATRIX parseMatrix(char *filename);
 int writeMatrix(char *filename, MATRIX matrix);
-
+MATRIX createMatrix(int nline, int ncol);
 #endif
