@@ -5,21 +5,14 @@
 MATRIX mult(MATRIX op1, MATRIX op2)
 {
   MATRIX result;
-  result.nline = op1.nline;
-  result.ncol = op2.ncol;
-  //result.data = (int**) calloc(result.nline, sizeof(int*));
-  //for(int i= 0; i< result.nline; i++) {
-  //  result.data[i] = (int*) calloc(result.ncol, sizeof(int));
-  //}
-  /
   result = createMatrix(op1.nline, op2.nline);
   for(int i= 0; i< result.nline; i++) {
     for(int j = 0; j < result.ncol; j++) {
       int sum = 0;
       for(int k = 0; k < result.ncol; k++) {
-        sum += op1.data[i][k] * op2.data[k][j];
+        sum += op1.data[i*op1.ncol + k] * op2.data[k*op2.ncol + j];
       }
-      result.data[i][j] = sum;
+      result.data[i*op1.ncol + j] = sum;
     }
   }
 return result;

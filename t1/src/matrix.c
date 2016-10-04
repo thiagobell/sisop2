@@ -14,10 +14,7 @@ MATRIX createMatrix( int nline, int ncol)
   MATRIX result;
   result.ncol = ncol;
   result.nline = nline;
-  result.data = (int**) calloc(nline, sizeof(int*));
-  for(int i= 0; i< nline; i++)
-    result.data[i] = (int*) calloc(ncol, sizeof(int));
-  //int (*matrix)[result.ncol] = (int(*)[result.ncol]) malloc(sizeof(int)*result.nline*result.ncol);
+  result.data = (int*) calloc(nline*ncol, sizeof(int));
   return result;
 }
 
@@ -48,9 +45,9 @@ MATRIX parseMatrix(char *filename)
   MATRIX matrix = createMatrix(nlines,ncol);
   for(int i= 0; i< nlines; i++) {
     for(int col= 0; col < ncol; col++) {
-      if(fscanf(f," %d ", &matrix.data[i][col])<=0)
+      if(fscanf(f," %d ", &matrix.data[i*matrix.ncol + col])<=0)
         formatingError("matrix syntax error");
-      printf("%d ", matrix.data[i][col]);
+      printf("%d ", matrix.data[i*matrix.ncol + col]);
     }
     printf("\n");
   }
@@ -71,9 +68,9 @@ int writeMatrix(char *filename, MATRIX matrix)
   for(int line= 0; line< matrix.nline; line++) {
     for(int col= 0; col < matrix.ncol; col++) {
       if(col< matrix.ncol-1)
-        fprintf(f, "%d ", matrix.data[line][col]);
+        fprintf(f, "%d ", matrix.data[line*matrix.ncol + col]);
       else
-        fprintf(f, "%d\n", matrix.data[line][col]);
+        fprintf(f, "%d\n", matrix.data[line*matrix.ncol + col]);
     }
   }
   fclose(f);

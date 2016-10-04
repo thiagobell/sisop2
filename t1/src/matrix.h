@@ -5,7 +5,7 @@
 */
 
 typedef struct {
-  int **data;
+  int *data;
   int ncol;
   int nline;
 } MATRIX;
