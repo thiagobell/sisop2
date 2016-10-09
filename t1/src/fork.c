@@ -3,21 +3,17 @@
 #include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <sys/msg.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
 typedef struct {
-  long mtype;
-  int done;
   int linebegin;
   int lineend;
 }TASK;
 
 void computeLine(int line, MATRIX op1, MATRIX op2, int *data)
 {
-    printf("computing line:%d\n", line);
     for(int j = 0; j < op2.ncol; j++) {
       int sum = 0;
       for(int k = 0; k < op2.ncol; k++) {
@@ -34,46 +30,61 @@ MATRIX mult(MATRIX op1, MATRIX op2, int n)
   result.nline = op1.nline;
   result.ncol = op2.ncol;
   result.data = (int*) calloc(result.nline*result.ncol, sizeof(int));
+
+  //test if n is too big. Each task has to be at least one line long
+  if(n > result.nline) {
+    printf("there aren't enough lines for the number of processes desired");
+    n = result.nline;
+    printf(" resetting number of process to %d\n", n);
+  }
+
   //matrix data for the result is stored in a shared memory area
   //creates memory segment
-  int segment_id = shmget(IPC_PRIVATE, 2*sizeof(int)*result.nline*result.ncol, IPC_CREAT);
-  int *data = (int*) shmat(segment_id, NULL, 0);
-  int *child_processes = (int*) calloc(n, sizeof(int));
-  int *child_mailboxes = (int*) calloc(n, sizeof(int));
-
-  //mailbox of parent
-  int mailbox_parent = msgget(IPC_PRIVATE, IPC_CREAT);
-  int outbox, inbox;
-  int process_id;
-  TASK ta;
+  int segment_id = shmget(IPC_PRIVATE, 2*sizeof(int)*result.nline*result.ncol, IPC_CREAT | 0666);
+  int *data = (int*) shmat(segment_id, 0, 0);
+  //stores childrens PIDs
+  int *child_processes = (int*) calloc(n, 1);
+  //allocates space for file descriptors of pipes
+  int *write_pipe_descriptors = (int*) calloc(n, sizeof(int));
+  int pid, readpipe;
   //spawn processes
   for(int i = 0; i < n; i++) {
-    int mailbox_temp = msgget(IPC_PRIVATE, IPC_CREAT);
-    process_id = fork();
-    if(process_id == 0){
+    //create pipe
+    int p[2];
+    p[1]=-1;
+    p[2]=-2;
+    pipe(p);
+    printf("creating child %d\n", i);
+    pid = fork();
+    if(pid == -1){
+      printf("error while forking");
+      exit(-1);
+    }
+    if(pid == 0) {
       //child
-      outbox = mailbox_parent;
-      inbox = mailbox_temp;
+      //closing write side of pipe
+      close(p[1]);
+      readpipe = p[0];
       break;
     } else {
       //parent
-      child_mailboxes[i] = mailbox_temp;
-      child_processes[i] = process_id;
+      //close read side of pipe
+      close(p[0]);
+      child_processes[i] = pid;
+      write_pipe_descriptors[i]= p[1];
     }
   }
-
-  if(process_id != 0) {
+  if(pid != 0) {
     //parent. send taks to children
     int lines_per_process = result.nline/n;
-    if(result.nline%n != 0)
-      lines_per_process++;
+
     int lines_left = result.nline;
     int cursor = 0;
     for(int child = 0; child < n; child++) {
       if(lines_left > 0) {
         TASK tasksend;
         tasksend.linebegin = cursor;
-        if(lines_left >= lines_per_process){
+        if(lines_left >= lines_per_process && child<n-1){
           cursor = cursor + lines_per_process;
           tasksend.lineend = cursor -1;
           lines_left -= lines_per_process;
@@ -82,51 +93,51 @@ MATRIX mult(MATRIX op1, MATRIX op2, int n)
           tasksend.lineend = cursor -1;
           lines_left = 0;
         }
-        printf("sending task para processo %d [%d %d]",child , tasksend.linebegin, tasksend.lineend);
-        msgsnd(child_mailboxes[child], &tasksend, sizeof(TASK)-sizeof(long),0);
+        printf("sending task to child #%d\n",child);
+        write(write_pipe_descriptors[child],&tasksend, sizeof(TASK));
       }
     }
     for(int child = 0; child < n; child++) {
-      waitpid(child_processes[child],NULL, 1);
+      waitpid(child_processes[child],NULL, 0);
+      printf("child %d done\n", child);
     }
-    printf("children terminated\n");
-    printf("lines %d, columns %d ", result.nline, result.ncol);
-    //memcpy(result.data, data, result.ncol*result.nline*sizeof(int));
+
+    memcpy(result.data, data, result.ncol*result.nline*sizeof(int));
     for(int li=0; li< result.nline;li++) {
       for(int co=0; co< result.ncol;co++) {
         //result.data[li*result.ncol + co] = data[li*result.ncol + co];
       }
     }
-    printf("copied\n");
     return result;
   } else {
     //process is a child. wait for TASK
     TASK taskreceive;
-    msgrcv(inbox, &taskreceive, sizeof(TASK),1, 0);
-    int lineCount;
-    printf("line%d %d\n", taskreceive.linebegin, taskreceive.lineend);
-    for(lineCount=taskreceive.linebegin; lineCount<=taskreceive.lineend; lineCount++) {
-
+    int bytes=0;
+    while(bytes < sizeof(TASK)) {
+      //printf("child waiting bytes received= %d\n",bytes);
+      bytes = bytes + read(readpipe, &taskreceive+bytes, sizeof(TASK));
+    }
+    //bytes = read(readpipe, &taskreceive+bytes, sizeof(TASK));
+    printf("task received on process %d. processing  lines [%d,%d]\n", getpid(), taskreceive.linebegin, taskreceive.lineend);
+    for(int lineCount=taskreceive.linebegin; lineCount<=taskreceive.lineend; lineCount++) {
       computeLine(lineCount, op1, op2, data);
     }
     exit(0);
   }
-
-
-
   int **queue = (int**) calloc(n, sizeof(int*));
-
 }
 
 
 int main(int argc, char **argv)
 {
-  if(argc < 4){
-    printf("insufficient parameters\n serial input1 input2 output");
+  if(argc < 5){
+    printf("insufficient parameters\n fork input1 input2 output processorNumber");
   }
 
   MATRIX op1 = parseMatrix(argv[1]);
   MATRIX op2 = parseMatrix(argv[2]);
-  MATRIX result = mult(op1,op2,2);
+  int n = atoi(argv[4]);
+  MATRIX result = mult(op1,op2,n);
+
   writeMatrix(argv[3], result);
 }

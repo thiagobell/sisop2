@@ -47,9 +47,9 @@ MATRIX parseMatrix(char *filename)
     for(int col= 0; col < ncol; col++) {
       if(fscanf(f," %d ", &matrix.data[i*matrix.ncol + col])<=0)
         formatingError("matrix syntax error");
-      printf("%d ", matrix.data[i*matrix.ncol + col]);
+      //printf("%d ", matrix.data[i*matrix.ncol + col]);
     }
-    printf("\n");
+    //printf("\n");
   }
   fclose(f);
   matrix.ncol = ncol;
