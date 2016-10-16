@@ -16,11 +16,35 @@ void computeLine(int line, MATRIX op1, MATRIX op2, int *data)
 {
     for(int j = 0; j < op2.ncol; j++) {
       int sum = 0;
-      for(int k = 0; k < op2.ncol; k++) {
+      for(int k = 0; k < op2.nline; k++) {
         sum += op1.data[line*op1.ncol + k] * op2.data[k*op2.ncol + j];
       }
-      data[line*op1.ncol + j] = sum;
+      data[line*op2.ncol + j] = sum;
     }
+}
+
+TASK* allocateTasks(int process_num, int line_num) 
+{
+  int lines_per_process = line_num/process_num;
+
+  int lines_left = line_num;
+  int cursor = 0;
+  TASK *tasks = (TASK*) calloc(sizeof(TASK), process_num);
+  for(int child = 0; child < process_num; child++) {
+      if(lines_left > 0) {
+        tasks[child].linebegin = cursor;
+        if(lines_left >= lines_per_process && child<process_num-1){
+          cursor = cursor + lines_per_process;
+          tasks[child].lineend = cursor -1;
+          lines_left -= lines_per_process;
+        } else {
+          cursor = cursor + lines_left;
+          tasks[child].lineend = cursor -1;
+          lines_left = 0;
+        }
+      }
+    }
+    return(tasks);
 }
 
 
@@ -47,13 +71,12 @@ MATRIX mult(MATRIX op1, MATRIX op2, int n)
   //allocates space for file descriptors of pipes
   int *write_pipe_descriptors = (int*) calloc(n, sizeof(int));
   int pid, readpipe;
+  //generate tasks
+  TASK *tasks = allocateTasks(n, result.nline);
+  int child_id = -1;
   //spawn processes
   for(int i = 0; i < n; i++) {
-    //create pipe
-    int p[2];
-    p[1]=-1;
-    p[2]=-2;
-    pipe(p);
+    child_id = i;
     printf("creating child %d\n", i);
     pid = fork();
     if(pid == -1){
@@ -62,41 +85,17 @@ MATRIX mult(MATRIX op1, MATRIX op2, int n)
     }
     if(pid == 0) {
       //child
-      //closing write side of pipe
-      close(p[1]);
-      readpipe = p[0];
       break;
     } else {
       //parent
       //close read side of pipe
-      close(p[0]);
+      child_id = -1;
       child_processes[i] = pid;
-      write_pipe_descriptors[i]= p[1];
     }
   }
   if(pid != 0) {
-    //parent. send taks to children
-    int lines_per_process = result.nline/n;
-
-    int lines_left = result.nline;
-    int cursor = 0;
-    for(int child = 0; child < n; child++) {
-      if(lines_left > 0) {
-        TASK tasksend;
-        tasksend.linebegin = cursor;
-        if(lines_left >= lines_per_process && child<n-1){
-          cursor = cursor + lines_per_process;
-          tasksend.lineend = cursor -1;
-          lines_left -= lines_per_process;
-        } else {
-          cursor = cursor + lines_left;
-          tasksend.lineend = cursor -1;
-          lines_left = 0;
-        }
-        printf("sending task to child #%d\n",child);
-        write(write_pipe_descriptors[child],&tasksend, sizeof(TASK));
-      }
-    }
+    //parent. waits children
+    
     for(int child = 0; child < n; child++) {
       waitpid(child_processes[child],NULL, 0);
       printf("child %d done\n", child);
@@ -111,27 +110,23 @@ MATRIX mult(MATRIX op1, MATRIX op2, int n)
     return result;
   } else {
     //process is a child. wait for TASK
-    TASK taskreceive;
-    int bytes=0;
-    while(bytes < sizeof(TASK)) {
-      //printf("child waiting bytes received= %d\n",bytes);
-      bytes = bytes + read(readpipe, &taskreceive+bytes, sizeof(TASK));
-    }
-    //bytes = read(readpipe, &taskreceive+bytes, sizeof(TASK));
+    TASK taskreceive = tasks[child_id];
+
     printf("task received on process %d. processing  lines [%d,%d]\n", getpid(), taskreceive.linebegin, taskreceive.lineend);
     for(int lineCount=taskreceive.linebegin; lineCount<=taskreceive.lineend; lineCount++) {
+      printf("computing line %d\n", lineCount);
       computeLine(lineCount, op1, op2, data);
     }
     exit(0);
   }
-  int **queue = (int**) calloc(n, sizeof(int*));
 }
 
 
 int main(int argc, char **argv)
 {
   if(argc < 5){
-    printf("insufficient parameters\n fork input1 input2 output processorNumber");
+    printf("insufficient parameters\n fork input1 input2 output processNumber");
+    return(-1);
   }
 
   MATRIX op1 = parseMatrix(argv[1]);
