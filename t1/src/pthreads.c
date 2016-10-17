@@ -58,18 +58,16 @@ void *func (void* arg)
 
 int main (int argc, char *argv[])
 {
-	if(argc < 5){
+	if(argc < 2){
     	printf("Numero insuficiente de parametros, use:\n");
-		printf("\t./pthreads in1.txt in2.txt out.txt <numeroDeThreads>\n");
+		printf("\t./pthreads <numeroDeThreads>\n");
 		return -1;
   	}
 
-	numeroThreads = atoi(argv[4]);
+	numeroThreads = atoi(argv[1]);
 	
-	matrizA = parseMatrix(argv[1]);
-	printf("MatrizA: %d linhas, %d colunas\n", matrizA.nline, matrizA.ncol);
-    matrizB = parseMatrix(argv[2]);
-	printf("MatrizB: %d linhas, %d colunas\n", matrizB.nline, matrizB.ncol);
+	matrizA = parseMatrix("test/m1.txt");
+    matrizB = parseMatrix("test/m2.txt");
 	
 	matrizR.nline = matrizA.nline;
 	matrizR.ncol = matrizB.ncol;
@@ -108,7 +106,7 @@ int main (int argc, char *argv[])
 	
 	printMatrix();
 
-	writeMatrix(argv[3], matrizR);
+	writeMatrix("test/out.txt", matrizR);
 
 	return 0;
 
