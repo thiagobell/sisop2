@@ -15,6 +15,6 @@ def generate(filename,lin,col):
 	f.close	()
 
 
-generate("m1.txt",3,7)
-generate("m2.txt",7,5)
+generate("in1.txt",10,10)
+generate("in2.txt",10,10)
 

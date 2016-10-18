@@ -20,12 +20,9 @@ return result;
 
 int main(int argc, char **argv)
 {
-  if(argc < 4){
-    printf("insufficient parameters\n serial input1 input2 output");
-  }
 
-  MATRIX op1 = parseMatrix(argv[1]);
-  MATRIX op2 = parseMatrix(argv[2]);
+  MATRIX op1 = parseMatrix("in1.txt");
+  MATRIX op2 = parseMatrix("in2.txt");
   MATRIX result = mult(op1,op2);
-  writeMatrix(argv[3], result);
+  writeMatrix("out.txt", result);
 }

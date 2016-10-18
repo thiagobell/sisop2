@@ -1,5 +1,6 @@
 #include "matrix.h"
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -7,6 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
+
 typedef struct {
   int linebegin;
   int lineend;
@@ -77,7 +79,7 @@ MATRIX mult(MATRIX op1, MATRIX op2, int n)
   //spawn processes
   for(int i = 0; i < n; i++) {
     child_id = i;
-    printf("creating child %d\n", i);
+    //printf("creating child %d\n", i);
     pid = fork();
     if(pid == -1){
       printf("error while forking");
@@ -114,7 +116,7 @@ MATRIX mult(MATRIX op1, MATRIX op2, int n)
 
     printf("task received on process %d. processing  lines [%d,%d]\n", getpid(), taskreceive.linebegin, taskreceive.lineend);
     for(int lineCount=taskreceive.linebegin; lineCount<=taskreceive.lineend; lineCount++) {
-      printf("computing line %d\n", lineCount);
+      //printf("computing line %d\n", lineCount);
       computeLine(lineCount, op1, op2, data);
     }
     exit(0);
@@ -124,15 +126,15 @@ MATRIX mult(MATRIX op1, MATRIX op2, int n)
 
 int main(int argc, char **argv)
 {
-  if(argc < 5){
-    printf("insufficient parameters\n fork input1 input2 output processNumber");
+  if(argc < 2){
+    printf("insufficient parameters\n fork processNumber");
     return(-1);
   }
 
-  MATRIX op1 = parseMatrix(argv[1]);
-  MATRIX op2 = parseMatrix(argv[2]);
-  int n = atoi(argv[4]);
+  MATRIX op1 = parseMatrix("in1.txt");
+  MATRIX op2 = parseMatrix("in2.txt");
+  int n = atoi(argv[1]);
   MATRIX result = mult(op1,op2,n);
 
-  writeMatrix(argv[3], result);
+  writeMatrix("out.txt", result);
 }
