@@ -4,11 +4,10 @@
 #include <string.h>
 #include <pthread.h>
 #include <time.h>
-#include <semaphore.h>
 
 int num;
 char *estados;
-sem_t muteximprimir;
+pthread_mutex_t muteximprimir;
 pthread_mutex_t mutexcomer;
 pthread_cond_t liberar;
 
@@ -46,7 +45,8 @@ int main(int argc, char *argv[])
 		estados[i] = 'T';
 	
 	pthread_mutex_init(&mutexcomer, NULL);
-	sem_init(&muteximprimir, 0, 1);
+	pthread_mutex_init(&muteximprimir, NULL);
+
 
 	alteraEstado(0, 'T');
 
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
 void alteraEstado(int filosofo, char estado)
 {
-	sem_wait(&muteximprimir);
+	pthread_mutex_lock(&muteximprimir);
 	
 	estados[filosofo] = estado;
 	int i;
@@ -74,7 +74,7 @@ void alteraEstado(int filosofo, char estado)
 		printf("%c", estados[i]);
 	printf("\n");
 
-	sem_post(&muteximprimir);
+	pthread_mutex_unlock(&muteximprimir);
 }
 
 void *simulate (void *arg) 
