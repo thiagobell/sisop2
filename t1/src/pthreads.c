@@ -29,13 +29,15 @@ void computeLine(int line)
 {
   //  printf("computing line:%d\n", line);
   int j;
+  
   for(j = 0; j < matrizB.ncol; j++) {
-    matrizR.data[line*matrizR.ncol + j] = 0;
+    int count = 0;
     int k;
     for(k = 0; k < matrizB.nline; k++) {
-      matrizR.data[line*matrizR.ncol + j] += matrizA.data[line*matrizA.ncol + k] * matrizB.data[k*matrizB.ncol + j];
+      count += matrizA.data[line*matrizA.ncol + k] * matrizB.data[k*matrizB.ncol + j];
 
     }
+    matrizR.data[line*matrizR.ncol + j] = count;
     //printf("computed line:%d, col:%d, value:%d\n", line, j, matrizR.data[line*matrizR.ncol + j]);
   }
 }
