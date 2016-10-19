@@ -2,17 +2,17 @@
 declare -a listOfExecs=("fork" "pthreads")
 rm times.output
 for i in "${listOfExecs[@]}"; do
-  cp ../../build/$i .
+  cp ../../build/"$i" .
   echo "$i" >> times.output
-  for tst in {1..4}; do
+  for tst in {1..5}; do
     echo "test case $tst"
     echo "test case $tst" >> times.output
     cp ../testcases/$tst/* .
-    for p in {2,4,8}; do
+    for p in {1,2,4,8}; do
       echo "$p processes/threads"
       echo "$p processes/threads" >> times.output
       for testrun in {1..10}; do
-	{ time ./fork $p ; } 2>&1 | grep real >> times.output
+	{ time ./"$i" $p ; }  2>&1 | grep real >> times.output
 	sleep 5
       done
     done
