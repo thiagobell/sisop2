@@ -5,22 +5,27 @@
 #include <pthread.h>
 #include <time.h>
 
-int num;
-char *estados;
-pthread_mutex_t muteximprimir;
-pthread_mutex_t mutexcomer;
-pthread_cond_t liberar;
 
-void alteraEstado(int filosofo, char estado);
-void *simulate (void *arg);
-void hungry (int filosofo);
-void eat (int filosofo);
-void think (int filosofo);
+typedef struct mesa_s {
+	pthread_mutex_t mutexmesa;
+	pthread_t* filosofos;
+	pthread_cond_t* cond;
+	char* estado;
+} MESA;
+
+int num;
+MESA* mesa;
+
+void imprimeEstado(void);
+void *filosofo (void *);
+void hungry (int);
+void eat (int);
+void think (int);
 
 int main(int argc, char *argv[]) 
 {
 
-	if(argc < 1){
+	if(argc < 2){
     	printf("Numero insuficiente de parametros\n");
 		return -1;
 	}
@@ -37,76 +42,90 @@ int main(int argc, char *argv[])
 	//setting up random number generation
   	time_t t;
   	srand((unsigned) time(&t));
-	
-	//inicializar estados
-	estados = (char*) malloc(num*sizeof(char));
 	int i;
+
+	mesa = (MESA*) malloc(sizeof(MESA));
+	pthread_mutex_init(&mesa->mutexmesa, NULL);
+
+	//inicializar estados
+	mesa->estado = (char*) malloc(num*sizeof(char));
 	for (i = 0; i < num; i++)
-		estados[i] = 'T';
-	
-	pthread_mutex_init(&mutexcomer, NULL);
-	pthread_mutex_init(&muteximprimir, NULL);
+		mesa->estado[i] = 'T';
 
-
-	alteraEstado(0, 'T');
+	imprimeEstado();
 
 	//criar filósofos
-	pthread_t filosofos[num];
-	for (i = 0; i < num; i++){
-		pthread_create(&filosofos[i], NULL, simulate, (void*) &i);
-		usleep(100);	
+	mesa->cond = (pthread_cond_t*) malloc(num*sizeof(pthread_cond_t));
+	for (i = 0; i < num; i++)
+		pthread_cond_init(&mesa->cond[i], NULL);
+	mesa->filosofos = (pthread_t*) malloc(num*sizeof(pthread_t));
+	for (i = 0; i < num; i++)
+	{
+		pthread_create(&mesa->filosofos[i], NULL, filosofo, (void*) &i);
+		usleep(100);
 	}
+	
 
 	for (i = 0; i < num; i++)
-		pthread_join(filosofos[i], NULL);
+		pthread_join(mesa->filosofos[i], NULL);
 	
 	return 0;
 }
 
 
-void alteraEstado(int filosofo, char estado)
+void imprimeEstado()
 {
-	pthread_mutex_lock(&muteximprimir);
-	
-	estados[filosofo] = estado;
 	int i;
 	for (i = 0; i < num; i++)
-		printf("%c", estados[i]);
+		printf("%c ", mesa->estado[i]);
 	printf("\n");
 
-	pthread_mutex_unlock(&muteximprimir);
 }
 
-void *simulate (void *arg) 
+void *filosofo (void *arg) 
 {
-	int filosofo = *(int *) arg;
+	int fil = *(int *) arg;
 	while(1)
 	{
-		hungry(filosofo);
-		eat(filosofo);
-		think(filosofo);
+		
+		hungry(fil);
+		sleep(rand()%10+1);
+		think(fil);
+		sleep(rand()%10+1);
 	}
 }
 
 void hungry (int filosofo)
 {
-	sleep(rand()%10+1);
-	alteraEstado(filosofo, 'H');
+	pthread_mutex_lock(&mesa->mutexmesa);
+	mesa->estado[filosofo] = 'H';
+	imprimeEstado();
+	eat(filosofo);
+	if (mesa->estado[filosofo] != 'E')
+		pthread_cond_wait(&mesa->cond[filosofo], &mesa->mutexmesa);
+	imprimeEstado();
+	pthread_mutex_unlock(&mesa->mutexmesa);
 }
 
 void eat (int filosofo)
 {
-	pthread_mutex_lock(&mutexcomer);
-	while(estados[(filosofo+num-1)%num] == 'E' || estados[(filosofo+1)%num] == 'E')
-		pthread_cond_wait(&liberar, &mutexcomer);
-	alteraEstado(filosofo, 'E');
-	pthread_cond_signal(&liberar);
-	pthread_mutex_unlock(&mutexcomer);	
+	if (mesa->estado[(filosofo+num-1)%num] != 'E' && 
+		mesa->estado[filosofo] == 'H' &&
+		mesa->estado[(filosofo+1)%num] != 'E')
+	{
+		mesa->estado[filosofo] = 'E';
+		pthread_cond_signal(&mesa->cond[filosofo]);
+	}
 }
+
 
 void think(int filosofo)
 {
-	sleep(rand()%10+1);
-	alteraEstado(filosofo, 'T');
+	pthread_mutex_lock(&mesa->mutexmesa);
+	mesa->estado[filosofo] = 'T';
+	imprimeEstado();
+	eat((filosofo+num-1)%num);
+	eat((filosofo+1)%num);
+	pthread_mutex_unlock(&mesa->mutexmesa);
 }
 
