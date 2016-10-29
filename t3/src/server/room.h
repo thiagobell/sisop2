@@ -26,7 +26,8 @@ void initialize();
 int get_room_id_by_name(char *name);
 
 /* creates a room and returns its id
-if room already exists, returns id*/
+if room already exists, returns id
+if max num of rooms was reached return -1*/
 int create_room(char *name);
 
 /* adds client to room
@@ -35,7 +36,7 @@ int create_room(char *name);
  * returns -2 if room is full
  if client is already in room returns successful
 */
-int add_client_to_room(CLIENT client, char *room_name);
+int add_client_to_room(CLIENT *client, char *room_name);
 
 /* removes client from room
     returns 0 if removed succesfully
@@ -46,6 +47,10 @@ int remove_client_from_room(int client_id, char *room_name);
 int get_num_clients_in_room(char *name);
 
 void print_clients_in_room(char *name);
+
+char* get_room_names();
+
+int send_message_to_room(int room_id, CLIENT *cli, char *message);
 
 #endif
 
