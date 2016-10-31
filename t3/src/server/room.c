@@ -124,6 +124,12 @@ int add_client_to_room(CLIENT *client, char *name){
             return -2;
     }
 
+    if(client->room_id != -1) {
+        //client is in another room
+        pthread_mutex_unlock(&rooms[test].room_lock);
+        return -3;
+    }
+
 
 
 
@@ -163,8 +169,10 @@ int add_client_to_room(CLIENT *client, char *name){
 }
 
 
-int remove_client_from_room(int client_id, char *name) {
+int remove_client_from_room(CLIENT *client, char *name) {
     check_if_inited();
+    int client_id = client->client_id;
+
     pthread_mutex_lock(&room_list_lock);
     //tests if rooms does not already exists
     int test = get_room_id_by_name(name);
@@ -173,36 +181,43 @@ int remove_client_from_room(int client_id, char *name) {
         pthread_mutex_unlock(&room_list_lock);
         return -1;
     }
+    if(client->room_id != test) {
+        //client is not in room
+        return -2;
+    }
     pthread_mutex_lock(&rooms[test].room_lock);
     pthread_mutex_unlock(&room_list_lock);
     if(rooms[test].client_num == 0) {
         //room is empty
         pthread_mutex_unlock(&rooms[test].room_lock);
         return -1;
+    }
+
+
+
+    CLIENT *current = rooms[test].client_list;
+    //tests first element
+    if(current->client_id == client_id) {
+        CLIENT *temp = rooms[test].client_list->client_next;
+        rooms[test].client_list = temp;
+        free(current);
+        rooms[test].client_num--;
     } else {
-        CLIENT *current = rooms[test].client_list;
-        //tests first element
-        if(current->client_id == client_id) {
-            CLIENT *temp = rooms[test].client_list->client_next;
-            rooms[test].client_list = temp;
-            free(current);
-            rooms[test].client_num--;
-        } else {
-            //tests other elements
-            while(current->client_next != NULL) {
-                if(current->client_next->client_id == client_id){
-                    CLIENT *temp = current->client_next->client_next;
-                    current->client_next->room_id = -1;
-                    current->client_next = temp;
-                    rooms[test].client_num--;
-                    break;
-                }
+        //tests other elements
+        while(current->client_next != NULL) {
+            if(current->client_next->client_id == client_id){
+                CLIENT *temp = current->client_next->client_next;
+                current->client_next->room_id = -1;
+                current->client_next = temp;
+                rooms[test].client_num--;
+                break;
             }
         }
-        pthread_mutex_unlock(&rooms[test].room_lock);
-        return 0;
-
     }
+    pthread_mutex_unlock(&rooms[test].room_lock);
+    return 0;
+
+
 }
 
 int get_num_clients_in_room(char *name)
@@ -283,7 +298,7 @@ char *get_room_names()
 }
 
 //-1 room does not exist
-int send_message_to_room(int room_id, CLIENT *cli, char *message)
+int send_message_to_room(int room_id, CLIENT *client, char *message)
 {
     check_if_inited();
     CLIENT *clients[ROOM_MAX_CLIENTS];
@@ -311,7 +326,7 @@ int send_message_to_room(int room_id, CLIENT *cli, char *message)
     pthread_mutex_unlock(&rooms[room_id].room_lock);
     int cursor;
     for(cursor = 0; cursor < num_clients; cursor++) {
-        if(clients[cursor]->room_id == room_id)
+        if(clients[cursor]->room_id == room_id || clients[cursor]->client_id != client->client_id)
             send_message_to_client(clients[cursor], MESSAGE_CHAT_MSG_TO_CLIENT,strlen(message)+1, 0, message);
 
     }
