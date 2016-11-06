@@ -4,6 +4,12 @@
 
 /* this module defines the message format for the chat application */
 
+/* message can be of two categories*/
+
+/* messages with chat messages are on this category*/
+#define MESSAGE_CHAT 1
+/* all other messages are control messages*/
+#define MESSAGE_CONTROL 2
 
 /* message types are defined here */
 
@@ -70,6 +76,8 @@ typedef struct message {
 /* to call this function there must be the first 64 bits of valid data on the buffer
 pointer by the functions paramenter. */
 unsigned int get_message_length(char *pointer);
+
+int get_message_category(int message_type);
 
 int read_message_from_socket(int sock, MESSAGE *msg);
 int send_message_to_socket(int sock, int type, int length, int sequence_number, char *data);

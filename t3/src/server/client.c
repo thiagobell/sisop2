@@ -88,8 +88,9 @@ void client_connect(int client_id, int sock) {
             exit_cond = 1;
             break;
         }
-
+        printf("message of type %d received\n", msg.type);
         switch(msg.type) {
+
             case MESSAGE_NEW_NICK: set_nick(&client, &msg);
                                     break;
             case MESSAGE_LIST_ROOMS_REQUEST:

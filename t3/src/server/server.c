@@ -20,7 +20,7 @@ int main() {
     //Prepare the sockaddr_in structure
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons( 8880 );
+    server.sin_port = htons( 8803);
 
     //Bind
     if( bind(sock,(struct sockaddr *)&server , sizeof(server)) < 0)
