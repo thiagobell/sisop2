@@ -76,10 +76,12 @@ int create_room(char *name) {
     int test = get_room_id_by_name(name);
     if(test >= 0) {
         //rooms exists
+        pthread_mutex_unlock(&room_list_lock);
         return test;
     }
     if(room_num == ROOM_MAX_NUM){
         //max number of rooms reached
+        pthread_mutex_unlock(&room_list_lock);
         return -1;
     }
     room_num++;
@@ -169,22 +171,24 @@ int add_client_to_room(CLIENT *client, char *name){
 }
 
 
-int remove_client_from_room(CLIENT *client, char *name) {
+int remove_client_from_room(CLIENT *client) {
     check_if_inited();
     int client_id = client->client_id;
 
     pthread_mutex_lock(&room_list_lock);
-    //tests if rooms does not already exists
-    int test = get_room_id_by_name(name);
-    if(test < 0) {
-        //rooms does not exists
+    //tests if rooms  exists
+    if(roommap[client->room_id] == 0) {
+        //room does not exist
         pthread_mutex_unlock(&room_list_lock);
         return -1;
     }
-    if(client->room_id != test) {
-        //client is not in room
+    if(client->room_id == -1) {
+        //client not in any room
+        pthread_mutex_unlock(&room_list_lock);
         return -2;
     }
+    int test = client->room_id;
+
     pthread_mutex_lock(&rooms[test].room_lock);
     pthread_mutex_unlock(&room_list_lock);
     if(rooms[test].client_num == 0) {
@@ -200,7 +204,6 @@ int remove_client_from_room(CLIENT *client, char *name) {
     if(current->client_id == client_id) {
         CLIENT *temp = rooms[test].client_list->client_next;
         rooms[test].client_list = temp;
-        free(current);
         rooms[test].client_num--;
     } else {
         //tests other elements
@@ -302,8 +305,10 @@ int send_message_to_room(int room_id, CLIENT *client, char *message)
 {
     check_if_inited();
     CLIENT *clients[ROOM_MAX_CLIENTS];
-    int num_clients;
+    int num_clients=0;
+    printf("trying to enter first mutex\n");
     pthread_mutex_lock(&room_list_lock);
+    printf("message room. entering room list mutex\n");
     //tests if rooms does not already exists
 
     if(roommap[room_id]==0) {
@@ -312,6 +317,7 @@ int send_message_to_room(int room_id, CLIENT *client, char *message)
         return -1;
     }
     pthread_mutex_lock(&rooms[room_id].room_lock);
+    printf("message room. entering room mutex\n");
     pthread_mutex_unlock(&room_list_lock);
     int client_id;
     CLIENT *cl;
@@ -326,9 +332,10 @@ int send_message_to_room(int room_id, CLIENT *client, char *message)
     pthread_mutex_unlock(&rooms[room_id].room_lock);
     int cursor;
     for(cursor = 0; cursor < num_clients; cursor++) {
-        if(clients[cursor]->room_id == room_id || clients[cursor]->client_id != client->client_id)
+        if(clients[cursor]->room_id == room_id && clients[cursor]->client_id != client->client_id) {
+            printf("forwarding message from %d to %d\n",client->client_id, clients[cursor]->client_id);
             send_message_to_client(clients[cursor], MESSAGE_CHAT_MSG_TO_CLIENT,strlen(message)+1, 0, message);
-
+        }
     }
     printf("done\n");
 }

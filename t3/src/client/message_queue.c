@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 pthread_cond_t new_message;
-
+extern exit_client;
 typedef struct message_list {
     MESSAGE msg;
     struct message_list *previous;
@@ -68,28 +68,31 @@ MESSAGE* get_message_from_queue(int message_category, int block)
     MESSAGE *return_message;
     int found = 0;
     //acquire mutex
-    printf("trying to acquire mutex on get message\n");
+    //printf("trying to acquire mutex on get message\n");
     pthread_mutex_lock(&mutex);
-    printf("mutex acquired on get message\n");
+   // printf("mutex acquired on get message\n");
     while((return_message = get_from_list(message_category)) == NULL) {
         //no message to get
-        printf("no message on the queue\n");
+        //printf("no message on the queue\n");
         if(block) {
-            printf("blocking\n");
+            //printf("blocking\n");
             pthread_cond_wait(&new_message, &mutex);
         } else {
-            printf("not blocking\n");
+            //printf("not blocking\n");
             return_message = NULL;
             break;
         }
     }
-    printf("unlocking mutex get message\n");
+    //printf("unlocking mutex get message\n");
     pthread_mutex_unlock(&mutex);
     return return_message;
 
 }
 
-
+void handle_incoming_chat_message(MESSAGE msg) {
+    printf("%s",msg.data);
+    return;
+}
 
 //this function is run by its own thread
 void* listen_for_message(void *socket_desc_void) {
@@ -100,19 +103,22 @@ void* listen_for_message(void *socket_desc_void) {
     inited = 1;
     MESSAGE temp;
     while(1) {
-
-
         int j = 0;
-
         int value = read_message_from_socket(socket_desc,&temp);
-        printf("acquiring mutex on listen for message\n");
+        //printf("acquiring mutex on listen for message\n");
         pthread_mutex_lock(&mutex);
         if(value == 0) {
-            printf("received message of type: %d\n",temp.type);
-            add_to_list(temp);
-
+            //printf("received message of type: %d\n",temp.type);
+            if(get_message_category(temp.type) == MESSAGE_CHAT)
+                handle_incoming_chat_message(temp);
+            else
+                add_to_list(temp);
+        } else if(value == -2) {
+            printf("server has disconnected\n");
+            exit_client = 1;
+            break;
         }
-        printf("releasing mutex on listen for message\n");
+        //printf("releasing mutex on listen for message\n");
         pthread_mutex_unlock(&mutex);
         if(value == 0)
             pthread_cond_signal(&new_message);

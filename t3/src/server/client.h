@@ -30,8 +30,9 @@ typedef struct client {
     pthread_mutex_t socket_write_lock;
     int room_id; /*-1 if not in any room*/
     struct client *client_next;
+    pthread_t thread;
 } CLIENT;
 
-void client_connect(int client_id, int socket);
+void* client_connect(void *client_ds) ;
 int send_message_to_client(CLIENT *client, int type, int length, int sequence_number, char *data);
 #endif

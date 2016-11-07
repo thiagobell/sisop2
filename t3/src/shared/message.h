@@ -52,7 +52,11 @@
 additional rooms*/
 #define MESSAGE_ERROR_MAX_ROOM_REACHED 11
 
-
+/* sent when trying to enter a room when
+alreadi in anoter*/
+#define MESSAGE_ERROR_ALREADY_IN_A_ROOM 12
+/* sent when client is not in a room */
+#define MESSAGE_ERROR_NOT_IN_ROOM 13
 
 
 

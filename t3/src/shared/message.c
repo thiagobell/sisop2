@@ -60,7 +60,7 @@ int read_message_from_socket(int sock, MESSAGE *msg) {
         msg->data = NULL;
     }
 
-    printf("Message of type %d and length %d received with sequence number= %d\n", msg->type, msg->length,msg->sequence_number);
+    //printf("Message of type %d and length %d received with sequence number= %d\n", msg->type, msg->length,msg->sequence_number);
 
     return 0;
 }
@@ -72,12 +72,6 @@ int send_message_to_socket(int sock, int type, int length, int sequence_number, 
         uint32_t length_network = htonl(length);
         msg.sequence_number = htonl(sequence_number);
         msg.data = data;
-
-        printf("length %d \n", msg.length);
-        if(msg.length > 0) {
-            printf("data: %s\n", data);
-        }
-
         int bytes = 0, ret;
         while(bytes < 4) {
             ret = send(sock , ((char*)&msg.type)+bytes , sizeof(msg.type)-bytes, 0);

@@ -49,7 +49,7 @@ int add_client_to_room(CLIENT *client, char *room_name);
     returns -1 if rooms is empty
     returns -2 if client is not in room
 */
-int remove_client_from_room(CLIENT *client, char *room_name);
+int remove_client_from_room(CLIENT *client);
 
 int get_num_clients_in_room(char *name);
 
